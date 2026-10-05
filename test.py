@@ -1,6 +1,16 @@
 import app as my_app
+import main as cli
 
 client = my_app.app.test_client()
+
+
+def test_cli_inventory_table():
+    rows = [{"id": 1, "product_name": "Milk", "stock": 12, "price": 2.5}]
+    table = cli.render_inventory_table(rows)
+    assert "ID" in table
+    assert "Milk" in table
+    assert "12" in table
+    assert "2.50" in table
 
 
 def test_get_inventory():
