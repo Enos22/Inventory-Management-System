@@ -1,60 +1,51 @@
 import requests
-# fetch Product by Barcode
+
 
 def fetch_by_barcode(barcode):
     url = f"https://world.openfoodfacts.org/api/v3.6/product/{barcode}.json"
     headers = {"User-Agent": "MyApp/1.0(soma.enos@gmail.com)"}
 
     try:
-        response = requests.get(url, auth=("off","off"), headers=headers, timeout = 10)
-        if response.status_code == 200:
-            j = response.json()
-            if j.get("status") == 1 or j.get("status") == "success":
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("status") in (1, "success") and data.get("product"):
+            return {"status": 1, "product": data.get("product", {})}
+    except Exception as exc:
+        print(f"product lookup failed: {exc}")
 
-                return {"status": 1, "product": j.get("product", {})}
+    fallback_url = f"https://world.openfoodfacts.net/api/v3.6/product/{barcode}.json"
+    try:
+        fallback_response = requests.get(fallback_url, headers=headers, timeout=10)
+        fallback_response.raise_for_status()
+        fallback_data = fallback_response.json()
+        if fallback_data.get("status") in (1, "success") and fallback_data.get("product"):
+            return {"status": 1, "product": fallback_data.get("product", {})}
+    except Exception as exc:
+        return {"status": 0, "error": str(exc)}
 
-    except Exception as e:
-        print(f"product failed: {e}")
-        
-        
-        fall_back = f"https://world.openfoodfacts.net/api/v3.6/product/{barcode}.json"
+    return {"status": 0, "error": "Product not found"}
 
-        res = requests.get(fall_back, headers=headers, timeout = 10)
-        j = res.json()
-        if j.get("status") == "success":
-            return {"status": 1, "product":j.get("product", {})}
-    except Exception as e:
-        return{"status": 0, "error": str(e)}
-    
-    return{"status": 0, "error": "Product not Found"}
 
 def fetch_by_name(name):
-    url = f"https://world.openfoodfacts.org/cgi/search.pl"
-
+    url = "https://world.openfoodfacts.org/cgi/search.pl"
     params = {
-        "search_term": name,
-        "json": True,
-        "page_size": 5
+        "search_terms": name,
+        "search_simple": 1,
+        "action": "process",
+        "json": 1,
+        "page_size": 5,
     }
     headers = {"User-Agent": "MyApp/1.0(soma.enos@gmail.com)"}
 
     try:
-        r = requests.get(url, params=params, headers=headers, timeout= 10)
-        return r.json()
-    except Exception as e:
-        return {"products": [], "error": str(e)}
-
-# if __name__ == "__main__":
-#     result = fetch_by_barcode("6111242100992")
-
-#     if result["status"] == 1:
-#         p = result["product"]
-#         print("\n Suceeded")
-#         print("name:", p.get("product_name"))
-#         print("brands:", p.get("brands"))
-#         print("Packaging:", p.get("packaging"))
-#         print("Barcode:", p.get("barcode"))
-#         # print(p)
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        products = data.get("products", [])
+        return {"products": products, "count": len(products)}
+    except Exception as exc:
+        return {"products": [], "count": 0, "error": str(exc)}
 
 
 
